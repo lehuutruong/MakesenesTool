@@ -1,0 +1,8 @@
+Run started at 2026-10-20T20:27:36.2438185+07:00
+[2026-10-20 20:27:36] [Info] Processing table Ai_Nghia (1/2)...
+[2026-10-20 20:27:36] [Ok] Finished Ai_Nghia: 2800 rows, 7305 success, 0 failed
+[2026-10-20 20:27:36] [Info] Processing table TB_Ai_Nghia (2/2)...
+[2026-10-20 20:27:36] [Ok] Finished TB_Ai_Nghia: 20 rows, 20 success, 0 failed
+[2026-10-20 20:27:36] [Ok] Exported Ai_Nghia (7305 rows)
+[2026-10-20 20:27:36] [Ok] Exported TB_Ai_Nghia (20 rows)
+[2026-10-20 20:27:36] [Ok] Reports exported.

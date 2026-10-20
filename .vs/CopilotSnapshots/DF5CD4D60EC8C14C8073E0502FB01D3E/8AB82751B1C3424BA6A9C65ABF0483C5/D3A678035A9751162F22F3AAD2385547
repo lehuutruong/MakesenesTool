@@ -1,0 +1,119 @@
+﻿using ClosedXML.Excel;
+using MakesenesTool.Models;
+using Microsoft.Data.Sqlite;
+using System.Globalization;
+using System.IO;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace MakesenesTool.Services;
+
+/// <summary>Backs up all Excel files in a folder into a SQLite database.</summary>
+public class BackupService
+{
+    /// <summary>Create or open a sqlite database file inside the source folder named "backup.db" and append parsed rows.</summary>
+    public Task BackupFolderAsync(string folderPath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            throw new DirectoryNotFoundException("Source folder not found.");
+
+        return Task.Run(() => BackupFolder(folderPath), ct);
+    }
+
+    private static void BackupFolder(string folderPath)
+    {
+        var files = Directory.GetFiles(folderPath, "*.xlsx");
+        var dbPath = Path.Combine(folderPath, "backup.db");
+        using var connection = new SqliteConnection($"Data Source={dbPath}");
+        connection.Open();
+        EnsureTable(connection);
+
+        foreach (var file in files)
+        {
+            using var workbook = new XLWorkbook(file);
+            foreach (var sheet in workbook.Worksheets)
+            {
+                var headerRow = sheet.Row(1);
+                var headers = headerRow.CellsUsed().Select(c => c.GetString().Trim()).ToList();
+                if (headers.Count < 4)
+                    continue; // not matching expected layout
+
+                // Expect first three columns to be Time, Month, Year (names are case-insensitive)
+                var timeCol = headers.FindIndex(h => string.Equals(h, "Time", StringComparison.OrdinalIgnoreCase));
+                var monthCol = headers.FindIndex(h => string.Equals(h, "Month", StringComparison.OrdinalIgnoreCase));
+                var yearCol = headers.FindIndex(h => string.Equals(h, "Year", StringComparison.OrdinalIgnoreCase));
+                if (timeCol < 0 || monthCol < 0 || yearCol < 0)
+                    continue;
+
+                // Remaining headers are locations
+                for (int r = 2; r <= (sheet.LastRowUsed()?.RowNumber() ?? 1); r++)
+                {
+                    var row = sheet.Row(r);
+                    if (row.IsEmpty())
+                        continue;
+
+                    var timeCell = row.Cell(timeCol + 1);
+                    DateTime timeValue;
+                    if (timeCell.DataType == XLDataType.DateTime)
+                        timeValue = timeCell.GetDateTime();
+                    else if (!DateTime.TryParse(timeCell.GetFormattedString().Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out timeValue))
+                        continue;
+
+                    var monthCell = row.Cell(monthCol + 1).GetFormattedString().Trim();
+                    var yearCell = row.Cell(yearCol + 1).GetFormattedString().Trim();
+                    int.TryParse(monthCell, out var monthValue);
+                    int.TryParse(yearCell, out var yearValue);
+
+                    for (int c = 0; c < headers.Count; c++)
+                    {
+                        if (c == timeCol || c == monthCol || c == yearCol)
+                            continue;
+                        var locName = headers[c];
+                        var cell = row.Cell(c + 1);
+                        var raw = cell.GetFormattedString().Trim();
+                        if (string.IsNullOrWhiteSpace(raw))
+                            continue;
+                        if (!double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
+                            continue;
+
+                        InsertMeasurement(connection, sheet.Name, locName, timeValue, monthValue, yearValue, value, Path.GetFileName(file));
+                    }
+                }
+            }
+        }
+
+        connection.Close();
+    }
+
+    private static void EnsureTable(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS LocationMeasurements (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            SheetName TEXT,
+            Location TEXT,
+            Time TEXT,
+            Month INTEGER,
+            Year INTEGER,
+            Value REAL,
+            SourceFile TEXT
+        );";
+        cmd.ExecuteNonQuery();
+    }
+
+    private static void InsertMeasurement(SqliteConnection conn, string sheet, string location, DateTime time, int month, int year, double value, string sourceFile)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO LocationMeasurements (SheetName, Location, Time, Month, Year, Value, SourceFile) VALUES ($s, $l, $t, $m, $y, $v, $f);";
+        cmd.Parameters.AddWithValue("$s", sheet);
+        cmd.Parameters.AddWithValue("$l", location);
+        cmd.Parameters.AddWithValue("$t", time.ToString("o"));
+        cmd.Parameters.AddWithValue("$m", month);
+        cmd.Parameters.AddWithValue("$y", year);
+        cmd.Parameters.AddWithValue("$v", value);
+        cmd.Parameters.AddWithValue("$f", sourceFile);
+        cmd.ExecuteNonQuery();
+    }
+}

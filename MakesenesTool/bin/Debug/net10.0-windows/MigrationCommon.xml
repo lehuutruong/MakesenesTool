@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>MigrationCommon</name>
+    </assembly>
+    <members>
+        <member name="T:MigrationCommon.Abstractions.IMigrationHandler">
+            <summary>Contract for all migration handlers across all tools. ViewModels depend on this interface only.</summary>
+        </member>
+        <member name="P:MigrationCommon.Abstractions.IMigrationHandler.RowCount">
+            <summary>Number of source rows loaded by InitAsync.</summary>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.IMigrationHandler.InitAsync(MigrationCommon.Models.MigrationRunContext,System.Threading.CancellationToken)">
+            <summary>Prepare before processing: read the source and load lookups.</summary>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.IMigrationHandler.ValidateAsync(System.IProgress{System.Int32},System.Threading.CancellationToken)">
+            <summary>Validate rows and return the full result including per-row errors.</summary>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.IMigrationHandler.ImportAsync(System.IProgress{System.Int32},System.Threading.CancellationToken)">
+            <summary>Import rows that passed validation. Failed rows are skipped.</summary>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.IMigrationHandler.UpdateMigrationStatusAsync(System.Int32,MigrationCommon.Models.MigrationStatus,System.String)">
+            <summary>Write migration status for a single row to the SQLite tracking store.</summary>
+        </member>
+        <member name="T:MigrationCommon.Abstractions.MigrationHandlerBase">
+            <summary>Generic base for all migration handlers. Knows nothing about specific tools or row types.</summary>
+        </member>
+        <member name="F:MigrationCommon.Abstractions.MigrationHandlerBase.TrackingContext">
+            <summary>Tracking store shared by all handlers.</summary>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.MigrationHandlerBase.#ctor(MigrationCommon.Data.MigrationTrackingContext)">
+            <param name="trackingContext">SQLite tracking context.</param>
+        </member>
+        <member name="P:MigrationCommon.Abstractions.MigrationHandlerBase.RowCount">
+            <inheritdoc/>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.MigrationHandlerBase.InitAsync(MigrationCommon.Models.MigrationRunContext,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.MigrationHandlerBase.ValidateAsync(System.IProgress{System.Int32},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.MigrationHandlerBase.ImportAsync(System.IProgress{System.Int32},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:MigrationCommon.Abstractions.MigrationHandlerBase.UpdateMigrationStatusAsync(System.Int32,MigrationCommon.Models.MigrationStatus,System.String)">
+            <inheritdoc/>
+        </member>
+        <member name="T:MigrationCommon.Data.MigrationDbContext">
+            <summary>Read-only EF Core context for the Portal SQL Server database. Used for lookups only.</summary>
+        </member>
+        <member name="M:MigrationCommon.Data.MigrationDbContext.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{MigrationCommon.Data.MigrationDbContext})">
+            <summary>Read-only EF Core context for the Portal SQL Server database. Used for lookups only.</summary>
+        </member>
+        <member name="T:MigrationCommon.Data.MigrationTrackingContext">
+            <summary>EF Core context for the local SQLite migration tracking store.</summary>
+        </member>
+        <member name="M:MigrationCommon.Data.MigrationTrackingContext.#ctor(Microsoft.EntityFrameworkCore.DbContextOptions{MigrationCommon.Data.MigrationTrackingContext})">
+            <summary>EF Core context for the local SQLite migration tracking store.</summary>
+        </member>
+        <member name="P:MigrationCommon.Data.MigrationTrackingContext.MigrationRecords">
+            <summary>Per-row migration status records.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.ImportResult">
+            <summary>Outcome of an import pass. Skipped rows carry the reason in SkippedErrors.</summary>
+        </member>
+        <member name="M:MigrationCommon.Models.ImportResult.#ctor(System.Int32,System.Int32,System.Int32,System.Collections.Generic.IReadOnlyList{MigrationCommon.Models.RowError})">
+            <summary>Outcome of an import pass. Skipped rows carry the reason in SkippedErrors.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.MigrationRunContext">
+            <summary>Describes one migration run: input, output and mode.</summary>
+        </member>
+        <member name="P:MigrationCommon.Models.MigrationRunContext.SourceFilePath">
+            <summary>Full path of the source .xlsx file.</summary>
+        </member>
+        <member name="P:MigrationCommon.Models.MigrationRunContext.ReportOutputPath">
+            <summary>Full path where the error report .xlsx is written.</summary>
+        </member>
+        <member name="P:MigrationCommon.Models.MigrationRunContext.Mode">
+            <summary>Whether to validate only or validate and import.</summary>
+        </member>
+        <member name="P:MigrationCommon.Models.MigrationRunContext.CancellationToken">
+            <summary>Cancellation token for the whole run.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.RunMode">
+            <summary>Run mode selected by the user.</summary>
+        </member>
+        <member name="F:MigrationCommon.Models.RunMode.ValidateOnly">
+            <summary>Validate and write the error report only.</summary>
+        </member>
+        <member name="F:MigrationCommon.Models.RunMode.ValidateAndImport">
+            <summary>Validate, then import rows that passed.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.MigrationStatus">
+            <summary>Status of a single source row in the tracking store.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.MigrationTrackingRecord">
+            <summary>Persisted per-row migration status in the local SQLite tracking database.</summary>
+        </member>
+        <member name="P:MigrationCommon.Models.MigrationTrackingRecord.Category">
+            <summary>Category key, e.g. "Invoice" or "CreditNote".</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.RowError">
+            <summary>A single problem found on a source row.</summary>
+        </member>
+        <member name="M:MigrationCommon.Models.RowError.#ctor(System.Int32,System.String,System.String,System.String)">
+            <summary>A single problem found on a source row.</summary>
+        </member>
+        <member name="T:MigrationCommon.Models.ValidationResult">
+            <summary>Outcome of a validation pass over all source rows.</summary>
+        </member>
+        <member name="M:MigrationCommon.Models.ValidationResult.#ctor(System.Int32,System.Int32,System.Collections.Generic.IReadOnlyList{MigrationCommon.Models.RowError})">
+            <summary>Outcome of a validation pass over all source rows.</summary>
+        </member>
+        <member name="T:MigrationCommon.Services.IReportExportService">
+            <summary>Writes row errors to an Excel report.</summary>
+        </member>
+        <member name="M:MigrationCommon.Services.IReportExportService.ExportAsync(System.Collections.Generic.IEnumerable{MigrationCommon.Models.RowError},System.String)">
+            <summary>Writes the errors to outputPath. Writes a header-only file when the list is empty.</summary>
+        </member>
+        <member name="T:MigrationCommon.Services.ReportExportService">
+            <summary>Exports RowError lists to an .xlsx file using ClosedXML.</summary>
+        </member>
+        <member name="M:MigrationCommon.Services.ReportExportService.ExportAsync(System.Collections.Generic.IEnumerable{MigrationCommon.Models.RowError},System.String)">
+            <inheritdoc/>
+        </member>
+    </members>
+</doc>

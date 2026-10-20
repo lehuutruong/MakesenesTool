@@ -1,0 +1,111 @@
+﻿<Window x:Class="MakesenesTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MakesenesTool.ViewModels"
+        xmlns:views="clr-namespace:MakesenesTool.Views"
+        xmlns:local="clr-namespace:MakesenesTool.Converters"
+        Title="MakesenesTool"
+        Width="980" Height="680" MinWidth="820" MinHeight="600"
+        Background="{StaticResource CardBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header bar -->
+        <Grid Grid.Row="0" Height="52" Background="{StaticResource AccentBrush}">
+            <Button Command="{Binding HomeCommand}" ToolTip="Home"
+                    HorizontalAlignment="Left" Margin="14,0,0,0"
+                    Background="Transparent" BorderThickness="0" Cursor="Hand" Padding="4">
+                <Path Data="M0,8 L8,0 L16,8 L16,16 L10.5,16 L10.5,11 L5.5,11 L5.5,16 L0,16 Z"
+                      Fill="White" Stretch="Uniform" Width="18" Height="18"/>
+            </Button>
+            <TextBlock Text="MakesenesTool" Foreground="White" FontSize="18" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Stepper -->
+        <Grid Grid.Row="1" Margin="80,18,80,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Connector line, drawn behind the circles -->
+            <Border Grid.ColumnSpan="3" Height="2" VerticalAlignment="Top" Margin="130,13,130,0"
+                    Background="{StaticResource CardBorderBrush}"/>
+
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                <Border Width="28" Height="28" CornerRadius="14" BorderThickness="2"
+                        Background="{Binding Step1State, Converter={StaticResource StepBrush}, ConverterParameter=Circle}"
+                        BorderBrush="{Binding Step1State, Converter={StaticResource StepBrush}, ConverterParameter=CircleBorder}">
+                    <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{Binding Step1State, Converter={StaticResource StepBrush}, ConverterParameter=CircleText}"/>
+                </Border>
+                <Border Margin="0,8,0,0" Padding="10,4" CornerRadius="4"
+                        Background="{Binding Step1State, Converter={StaticResource StepBrush}, ConverterParameter=LabelBackground}">
+                    <TextBlock Text="Source Data Selection"
+                               Foreground="{Binding Step1State, Converter={StaticResource StepBrush}, ConverterParameter=LabelText}"/>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                <Border Width="28" Height="28" CornerRadius="14" BorderThickness="2"
+                        Background="{Binding Step2State, Converter={StaticResource StepBrush}, ConverterParameter=Circle}"
+                        BorderBrush="{Binding Step2State, Converter={StaticResource StepBrush}, ConverterParameter=CircleBorder}">
+                    <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{Binding Step2State, Converter={StaticResource StepBrush}, ConverterParameter=CircleText}"/>
+                </Border>
+                <Border Margin="0,8,0,0" Padding="10,4" CornerRadius="4"
+                        Background="{Binding Step2State, Converter={StaticResource StepBrush}, ConverterParameter=LabelBackground}">
+                    <TextBlock Text="Running Settings"
+                               Foreground="{Binding Step2State, Converter={StaticResource StepBrush}, ConverterParameter=LabelText}"/>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                <Border Width="28" Height="28" CornerRadius="14" BorderThickness="2"
+                        Background="{Binding Step3State, Converter={StaticResource StepBrush}, ConverterParameter=Circle}"
+                        BorderBrush="{Binding Step3State, Converter={StaticResource StepBrush}, ConverterParameter=CircleBorder}">
+                    <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{Binding Step3State, Converter={StaticResource StepBrush}, ConverterParameter=CircleText}"/>
+                </Border>
+                <Border Margin="0,8,0,0" Padding="10,4" CornerRadius="4"
+                        Background="{Binding Step3State, Converter={StaticResource StepBrush}, ConverterParameter=LabelBackground}">
+                    <TextBlock Text="Running and Results"
+                               Foreground="{Binding Step3State, Converter={StaticResource StepBrush}, ConverterParameter=LabelText}"/>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Step content -->
+        <ContentControl Grid.Row="2" Margin="60,24,60,16" Content="{Binding CurrentView}">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type vm:Step1ViewModel}">
+                    <views:Step1View/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:Step2ViewModel}">
+                    <views:Step2View/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:Step3ViewModel}">
+                    <views:Step3View/>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+
+        <!-- Footer navigation -->
+        <Border Grid.Row="3" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="24,12"
+                Visibility="{Binding ShowNavigation, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Button Content="Back" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}"
+                        HorizontalAlignment="Left" Padding="24,8" MinWidth="100"/>
+                <Button Content="{Binding NextLabel}" Command="{Binding NextCommand}" IsEnabled="{Binding CanGoNext}"
+                        HorizontalAlignment="Right" Style="{StaticResource PrimaryButton}" MinWidth="100"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

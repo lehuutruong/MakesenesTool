@@ -1,0 +1,70 @@
+using System.Windows;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using MakesenesTool.Handlers;
+using MakesenesTool.Services;
+using MakesenesTool.ViewModels;
+using MigrationCommon.Abstractions;
+using MigrationCommon.Data;
+using MigrationCommon.Services;
+
+namespace MakesenesTool;
+
+/// <summary>Application entry point and DI composition root.</summary>
+public partial class App : System.Windows.Application
+{
+    private ServiceProvider? _services;
+
+    /// <inheritdoc/>
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false)
+            .Build();
+
+        var services = new ServiceCollection();
+        ConfigureServices(services, configuration);
+        _services = services.BuildServiceProvider();
+
+        _services.GetRequiredService<MigrationTrackingContext>().Database.EnsureCreated();
+
+        var window = new MainWindow { DataContext = _services.GetRequiredService<MainViewModel>() };
+        window.Show();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _services?.Dispose();
+        base.OnExit(e);
+    }
+
+    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    {
+        // Desktop app with one active run at a time: the contexts live for the app lifetime.
+        services.AddDbContext<MigrationDbContext>(
+            o => o.UseSqlServer(configuration.GetConnectionString("PortalDb")),
+            ServiceLifetime.Singleton, ServiceLifetime.Singleton);
+
+        services.AddDbContext<MigrationTrackingContext>(
+            o => o.UseSqlite(configuration.GetConnectionString("TrackingDb")),
+            ServiceLifetime.Singleton, ServiceLifetime.Singleton);
+
+        services.AddTransient<ExcelReaderService>();
+        services.AddTransient<BackupService>();
+        services.AddTransient<IReportExportService, ReportExportService>();
+
+        //services.AddKeyedTransient<IMigrationHandler, InvoiceHandler>("Invoice");
+        //services.AddKeyedTransient<IMigrationHandler, CreditNoteHandler>("CreditNote");
+
+        services.AddSingleton<WizardState>();
+        services.AddTransient<Step1ViewModel>();
+        services.AddTransient<Step2ViewModel>();
+        services.AddTransient<Step3ViewModel>();
+        services.AddSingleton<MainViewModel>();
+    }
+}

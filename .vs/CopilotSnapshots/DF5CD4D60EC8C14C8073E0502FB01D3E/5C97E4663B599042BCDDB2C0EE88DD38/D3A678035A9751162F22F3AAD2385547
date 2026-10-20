@@ -1,0 +1,135 @@
+﻿using ClosedXML.Excel;
+using MakesenesTool.Models;
+using Microsoft.Data.Sqlite;
+using System.Globalization;
+using System.IO;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace MakesenesTool.Services;
+
+/// <summary>Backs up all Excel files in a folder into a SQLite database.</summary>
+public class BackupService
+{
+    /// <summary>Create or open a sqlite database file inside the source folder named "backup.db" and append parsed rows.</summary>
+    public Task BackupFolderAsync(string folderPath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            throw new DirectoryNotFoundException("Source folder not found.");
+
+        return Task.Run(() => BackupFolder(folderPath), ct);
+    }
+
+    private static void BackupFolder(string folderPath)
+    {
+        var files = Directory.GetFiles(folderPath, "*.xlsx");
+        // Create a timestamped backup DB inside the application's output (bin) directory.
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var dbFileName = $"backup_{timestamp}.db";
+        var dbPath = Path.Combine(AppContext.BaseDirectory, dbFileName);
+        using var connection = new SqliteConnection($"Data Source={dbPath}");
+        connection.Open();
+
+        foreach (var file in files)
+        {
+            using var workbook = new XLWorkbook(file);
+            foreach (var sheet in workbook.Worksheets)
+            {
+                var headerRow = sheet.Row(1);
+                var headers = headerRow.CellsUsed().Select(c => c.GetString().Trim()).ToList();
+                if (headers.Count < 4)
+                    continue; // not matching expected layout
+
+                // Expect first three columns to be Time, Month, Year (names are case-insensitive)
+                var timeCol = headers.FindIndex(h => string.Equals(h, "Time", StringComparison.OrdinalIgnoreCase));
+                var monthCol = headers.FindIndex(h => string.Equals(h, "Month", StringComparison.OrdinalIgnoreCase));
+                var yearCol = headers.FindIndex(h => string.Equals(h, "Year", StringComparison.OrdinalIgnoreCase));
+                if (timeCol < 0 || monthCol < 0 || yearCol < 0)
+                    continue;
+
+                // Remaining headers are locations
+                for (int r = 2; r <= (sheet.LastRowUsed()?.RowNumber() ?? 1); r++)
+                {
+                    var row = sheet.Row(r);
+                    if (row.IsEmpty())
+                        continue;
+
+                    var timeCell = row.Cell(timeCol + 1);
+                    DateTime timeValue;
+                    if (timeCell.DataType == XLDataType.DateTime)
+                        timeValue = timeCell.GetDateTime();
+                    else if (!DateTime.TryParse(timeCell.GetFormattedString().Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out timeValue))
+                        continue;
+
+                    var monthCell = row.Cell(monthCol + 1).GetFormattedString().Trim();
+                    var yearCell = row.Cell(yearCol + 1).GetFormattedString().Trim();
+                    int.TryParse(monthCell, out var monthValue);
+                    int.TryParse(yearCell, out var yearValue);
+
+                    for (int c = 0; c < headers.Count; c++)
+                    {
+                        if (c == timeCol || c == monthCol || c == yearCol)
+                            continue;
+                        var locName = headers[c];
+                        var cell = row.Cell(c + 1);
+                        var raw = cell.GetFormattedString().Trim();
+                        if (string.IsNullOrWhiteSpace(raw))
+                            continue;
+                        if (!double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
+                            continue;
+
+                        InsertMeasurement(connection, sheet.Name, locName, timeValue, monthValue, yearValue, value, Path.GetFileName(file));
+                    }
+                }
+            }
+        }
+
+        connection.Close();
+    }
+    private static void EnsureLocationTable(SqliteConnection conn, string tableName)
+    {
+        // tableName must be a safe identifier (already sanitized by caller)
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"CREATE TABLE IF NOT EXISTS ""{tableName}"" (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            SheetName TEXT,
+            Time TEXT,
+            Month INTEGER,
+            Year INTEGER,
+            Value REAL,
+            SourceFile TEXT
+        );";
+        cmd.ExecuteNonQuery();
+    }
+
+    private static string SanitizeTableName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Location";
+        // Replace spaces and invalid chars with underscore, keep letters, digits and underscore
+        var clean = System.Text.RegularExpressions.Regex.Replace(name, "[^A-Za-z0-9_]", "_");
+        // If starts with digit, prefix with underscore
+        if (char.IsDigit(clean[0]))
+            clean = "_" + clean;
+        return clean;
+    }
+
+    private static void InsertMeasurement(SqliteConnection conn, string sheet, string location, DateTime time, int month, int year, double value, string sourceFile)
+    {
+        var table = SanitizeTableName(location);
+        EnsureLocationTable(conn, table);
+
+        using var cmd = conn.CreateCommand();
+        // Table name cannot be parameterized, but it is sanitized
+        cmd.CommandText = $@"INSERT INTO ""{table}"" (SheetName, Time, Month, Year, Value, SourceFile) VALUES ($s, $t, $m, $y, $v, $f);";
+        cmd.Parameters.AddWithValue("$s", sheet);
+        cmd.Parameters.AddWithValue("$t", time.ToString("o"));
+        cmd.Parameters.AddWithValue("$m", month);
+        cmd.Parameters.AddWithValue("$y", year);
+        cmd.Parameters.AddWithValue("$v", value);
+        cmd.Parameters.AddWithValue("$f", sourceFile);
+        cmd.ExecuteNonQuery();
+    }
+}

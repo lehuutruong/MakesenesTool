@@ -1,0 +1,7 @@
+Run started at 2026-10-20T21:27:08.3034919+07:00
+[2026-10-20 21:27:08] [Info] Processing table Ai_Nghia (1/2)...
+[2026-10-20 21:27:08] [Ok] Finished Ai_Nghia: 7305 rows, 7305 success, 0 failed
+[2026-10-20 21:27:08] [Info] Processing table TB_Ai_Nghia (2/2)...
+[2026-10-20 21:27:08] [Ok] Finished TB_Ai_Nghia: 20 rows, 20 success, 0 failed
+[2026-10-20 21:27:08] [Ok] Exported location Ai_Nghia: Ai_Nghia_20261020_212708_report.xlsx
+[2026-10-20 21:27:08] [Ok] Location reports exported.

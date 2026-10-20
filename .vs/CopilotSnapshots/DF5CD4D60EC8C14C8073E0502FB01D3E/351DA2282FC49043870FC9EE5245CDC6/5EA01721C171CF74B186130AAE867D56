@@ -1,0 +1,55 @@
+﻿using MakesenesTool.Abstractions;
+using MakesenesTool.Models;
+using System.Threading.Tasks;
+
+namespace MakesenesTool.Services;
+
+/// <summary>Example processor that implements simple validation and calculation rules.</summary>
+public class SimpleMeasurementProcessor : DataProcessorBase
+{
+    public SimpleMeasurementProcessor(string dbPath, string tableName) : base(dbPath, tableName)
+    {
+    }
+
+    public override Task ValidateAsync()
+    {
+        // Simple rule: value must be >= 0
+        foreach (var r in Rows)
+        {
+            if (double.IsNaN(r.Value))
+            {
+                r.Status = ProcessStatus.Failed;
+                r.Message = "Value is not a number";
+            }
+            else if (r.Value < 0)
+            {
+                r.Status = ProcessStatus.Failed;
+                r.Message = "Negative value";
+            }
+            else
+            {
+                r.Status = ProcessStatus.Passed;
+                r.Message = string.Empty;
+            }
+        }
+        return Task.CompletedTask;
+    }
+
+    public override Task CalculateAsync()
+    {
+        // Example calculation: flag very large values
+        foreach (var r in Rows)
+        {
+            if (r.Value > 1000)
+            {
+                r.Status = ProcessStatus.Failed;
+                r.Message = "Value exceeds threshold";
+            }
+            else if (r.Status != ProcessStatus.Failed)
+            {
+                r.Status = ProcessStatus.Passed;
+            }
+        }
+        return Task.CompletedTask;
+    }
+}

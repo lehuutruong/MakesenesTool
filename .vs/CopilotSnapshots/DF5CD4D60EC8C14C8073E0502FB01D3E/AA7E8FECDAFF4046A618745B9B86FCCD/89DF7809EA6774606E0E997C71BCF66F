@@ -1,0 +1,66 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using MigrationCommon.Models;
+using System.IO;
+
+namespace MakesenesTool.ViewModels;
+
+/// <summary>Values entered across the wizard steps. One instance is shared by all step view models.</summary>
+public partial class WizardState : ObservableObject
+{
+    private const string ReportSuffix = "_report";
+
+    [ObservableProperty]
+    private string _sourceFilePath = string.Empty;
+
+    [ObservableProperty]
+    private string _reportOutputPath = string.Empty;
+
+    [ObservableProperty]
+    private string _selectedCategory = string.Empty;
+
+    [ObservableProperty]
+    private RunMode _selectedMode = RunMode.ValidateOnly;
+
+    /// <summary>Categories with a registered handler.</summary>
+    public IReadOnlyList<string> Categories { get; } = ["Invoice", "CreditNote"];
+
+    /// <summary>True once the user picked a report path manually. Stops auto-fill.</summary>
+    public bool ReportPathOverridden { get; set; }
+
+    /// <summary>Step 1 is complete when a source file and a category are chosen.</summary>
+    public bool Step1Complete =>
+        !string.IsNullOrWhiteSpace(SourceFilePath) && !string.IsNullOrWhiteSpace(SelectedCategory);
+
+    /// <summary>Step 2 is complete when a report path is set.</summary>
+    public bool Step2Complete => !string.IsNullOrWhiteSpace(ReportOutputPath);
+
+    partial void OnSourceFilePathChanged(string value)
+    {
+        if (!ReportPathOverridden && !string.IsNullOrWhiteSpace(value))
+            ReportOutputPath = BuildReportPath(value);
+    }
+
+    /// <summary>Builds the run context from the entered values.</summary>
+    public MigrationRunContext BuildRunContext() => new()
+    {
+        SourceFilePath = SourceFilePath,
+        ReportOutputPath = ReportOutputPath,
+        Mode = SelectedMode,
+    };
+
+    /// <summary>Clears all values so the wizard can start again.</summary>
+    public void Reset()
+    {
+        ReportPathOverridden = false;
+        SourceFilePath = string.Empty;
+        ReportOutputPath = string.Empty;
+        SelectedCategory = string.Empty;
+        SelectedMode = RunMode.ValidateOnly;
+    }
+
+    private static string BuildReportPath(string sourcePath)
+    {
+        var directory = Path.GetDirectoryName(sourcePath) ?? string.Empty;
+        return Path.Combine(directory, Path.GetFileNameWithoutExtension(sourcePath) + ReportSuffix + ".xlsx");
+    }
+}

@@ -1,0 +1,44 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
+using System.IO;
+// Using System.Windows.Forms types via full qualification to avoid ambiguous references with WPF types.
+
+namespace MakesenesTool.ViewModels;
+
+/// <summary>Step 2: Running Settings (report path and run mode).</summary>
+public partial class Step2ViewModel : ObservableObject
+{
+    /// <summary>Shared wizard values.</summary>
+    public WizardState State { get; }
+
+    /// <param name="state">Shared wizard values.</param>
+    public Step2ViewModel(WizardState state)
+    {
+        State = state;
+    }
+
+    [RelayCommand]
+    private void BrowseReport()
+    {
+        // Let user pick a folder; then create a filename inside that folder.
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog();
+        var result = dialog.ShowDialog();
+        if (result != System.Windows.Forms.DialogResult.OK && result != System.Windows.Forms.DialogResult.Yes)
+            return;
+
+        var selectedFolder = dialog.SelectedPath;
+        // Determine default report file name. If current ReportOutputPath already contains a file name use it, otherwise build from source file name.
+        string fileName = Path.GetFileName(State.ReportOutputPath);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            var sourceName = Path.GetFileName(State.SourceFilePath);
+            if (string.IsNullOrWhiteSpace(sourceName))
+                sourceName = "report";
+            fileName = Path.GetFileNameWithoutExtension(sourceName) + "_report.xlsx";
+        }
+
+        State.ReportOutputPath = Path.Combine(selectedFolder, fileName);
+        State.ReportPathOverridden = true;
+    }
+}

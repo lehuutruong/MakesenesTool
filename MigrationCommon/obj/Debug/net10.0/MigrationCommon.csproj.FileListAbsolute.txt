@@ -1,0 +1,15 @@
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\bin\Debug\net10.0\MigrationCommon.deps.json
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\bin\Debug\net10.0\MigrationCommon.dll
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\bin\Debug\net10.0\MigrationCommon.pdb
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\bin\Debug\net10.0\MigrationCommon.xml
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.csproj.AssemblyReference.cache
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.AssemblyInfoInputs.cache
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.AssemblyInfo.cs
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.csproj.CoreCompileInputs.cache
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.dll
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\refint\MigrationCommon.dll
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.xml
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.pdb
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\ref\MigrationCommon.dll
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\Migratio.E6F72FFE.Up2Date

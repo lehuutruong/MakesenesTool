@@ -1,0 +1,227 @@
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using MakesenesTool.Models;
+using MigrationCommon.Abstractions;
+using MigrationCommon.Models;
+using MigrationCommon.Services;
+
+namespace MakesenesTool.ViewModels;
+
+/// <summary>Step 3: Running and Results. Runs the migration job and shows progress, log and summary.</summary>
+public partial class Step3ViewModel : ObservableObject
+{
+    private const int MaxLogLines = 500;
+    private readonly IReportExportService _reportExporter;
+    private string? _reportPath;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressPercent))]
+    private int _currentRow;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressPercent))]
+    private int _totalRows;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenReport))]
+    private bool _isRunning;
+
+    [ObservableProperty]
+    private string _statusLabel = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNotice))]
+    private NoticeBannerViewModel? _noticeBanner;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenReport))]
+    private bool _reportReady;
+
+    [ObservableProperty]
+    private bool _isCompleted;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PassedLabel))]
+    [NotifyPropertyChangedFor(nameof(FailedLabel))]
+    private RunMode _mode = RunMode.ValidateOnly;
+
+    [ObservableProperty]
+    private int _totalCount;
+
+    [ObservableProperty]
+    private int _passedCount;
+
+    [ObservableProperty]
+    private int _failedCount;
+
+    /// <summary>Log lines, capped at 500.</summary>
+    public ObservableCollection<LogLine> LogLines { get; } = [];
+
+    /// <summary>Progress in percent of total rows.</summary>
+    public double ProgressPercent => TotalRows == 0 ? 0 : CurrentRow * 100.0 / TotalRows;
+
+    /// <summary>True when the report file has been written.</summary>
+    public bool CanOpenReport => ReportReady;
+
+    /// <summary>True when the warning banner is visible.</summary>
+    public bool HasNotice => NoticeBanner is not null;
+
+    /// <summary>Label of the "passed" card.</summary>
+    public string PassedLabel => Mode == RunMode.ValidateOnly ? "Passed" : "Imported";
+
+    /// <summary>Label of the "failed" card.</summary>
+    public string FailedLabel => Mode == RunMode.ValidateOnly ? "Failed" : "Skipped";
+
+    /// <param name="reportExporter">Writes the Excel error report.</param>
+    public Step3ViewModel(IReportExportService reportExporter)
+    {
+        _reportExporter = reportExporter;
+    }
+
+    /// <summary>Runs the job. Never throws: failures are logged so the view stays usable.</summary>
+    public async Task RunAsync(IMigrationHandler handler, MigrationRunContext context)
+    {
+        BeginRun(context.Mode);
+        var ct = context.CancellationToken;
+        try
+        {
+            await InitializeAsync(handler, context, ct);
+            var validation = await ValidateStepAsync(handler, ct);
+
+            if (context.Mode == RunMode.ValidateOnly)
+            {
+                await ExportReportAsync(context, validation.Errors);
+                ShowSummary(validation.TotalRows, validation.PassedRows, validation.TotalRows - validation.PassedRows);
+            }
+            else
+            {
+                var import = await ImportStepAsync(handler, ct);
+                if (import.SkippedRows > 0)
+                    await ExportReportAsync(context, import.SkippedErrors);
+                ShowSummary(import.TotalRows, import.ImportedRows, import.SkippedRows);
+            }
+
+            StatusLabel = "Completed.";
+            IsCompleted = true;
+        }
+        catch (FileNotFoundException ex)
+        {
+            Log(LogLevel.Error, ex.Message);
+            StatusLabel = "Stopped.";
+        }
+        catch (IOException)
+        {
+            Log(LogLevel.Error, "Cannot open source file — it may be open in another application.");
+            StatusLabel = "Stopped.";
+        }
+        catch (OperationCanceledException)
+        {
+            Log(LogLevel.Warning, "Run cancelled.");
+            StatusLabel = "Cancelled.";
+        }
+        catch (Exception ex)
+        {
+            Log(LogLevel.Error, $"Unexpected error: {ex.Message}");
+            StatusLabel = "Stopped with errors.";
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenReport()
+    {
+        if (_reportPath is null)
+            return;
+        Process.Start(new ProcessStartInfo { FileName = _reportPath, UseShellExecute = true });
+    }
+
+    private void BeginRun(RunMode mode)
+    {
+        Mode = mode;
+        IsRunning = true;
+        IsCompleted = false;
+        ReportReady = false;
+        _reportPath = null;
+        NoticeBanner = null;
+        CurrentRow = 0;
+        TotalRows = 0;
+        TotalCount = 0;
+        PassedCount = 0;
+        FailedCount = 0;
+        LogLines.Clear();
+        StatusLabel = "Reading source file…";
+    }
+
+    private async Task InitializeAsync(IMigrationHandler handler, MigrationRunContext context, CancellationToken ct)
+    {
+        Log(LogLevel.Info, $"Opening {Path.GetFileName(context.SourceFilePath)}");
+        await handler.InitAsync(context, ct);
+        TotalRows = handler.RowCount;
+        Log(LogLevel.Ok, $"Loaded {TotalRows} rows.");
+    }
+
+    private async Task<ValidationResult> ValidateStepAsync(IMigrationHandler handler, CancellationToken ct)
+    {
+        CurrentRow = 0;
+        StatusLabel = "Validating rows…";
+        var result = await handler.ValidateAsync(new Progress<int>(n => CurrentRow = n), ct);
+
+        foreach (var error in result.Errors)
+            Log(LogLevel.Error, $"Row {error.RowNumber} · {error.FieldName}: {error.Message}");
+        Log(LogLevel.Ok, $"Validation complete: {result.PassedRows} of {result.TotalRows} rows passed.");
+        return result;
+    }
+
+    private async Task<ImportResult> ImportStepAsync(IMigrationHandler handler, CancellationToken ct)
+    {
+        CurrentRow = 0;
+        StatusLabel = "Importing records…";
+        var result = await handler.ImportAsync(new Progress<int>(n => CurrentRow = n), ct);
+
+        foreach (var error in result.SkippedErrors)
+            Log(LogLevel.Error, $"Row {error.RowNumber} · {error.FieldName}: {error.Message}");
+        Log(LogLevel.Ok, $"Import complete: {result.ImportedRows} imported, {result.SkippedRows} skipped.");
+        return result;
+    }
+
+    private async Task ExportReportAsync(MigrationRunContext context, IReadOnlyList<RowError> errors)
+    {
+        try
+        {
+            StatusLabel = "Writing report…";
+            await _reportExporter.ExportAsync(errors, context.ReportOutputPath);
+            _reportPath = context.ReportOutputPath;
+            ReportReady = true;
+            Log(LogLevel.Info, $"Report written to {context.ReportOutputPath}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log(LogLevel.Error, $"Cannot write report: {ex.Message}");
+        }
+    }
+
+    private void ShowSummary(int total, int passed, int failed)
+    {
+        TotalCount = total;
+        PassedCount = passed;
+        FailedCount = failed;
+        if (failed > 0)
+        {
+            var action = Mode == RunMode.ValidateOnly ? "validated" : "imported";
+            NoticeBanner = new NoticeBannerViewModel($"{failed} row(s) were not {action}. Open the report for details.");
+        }
+    }
+
+    private void Log(LogLevel level, string message)
+    {
+        LogLines.Add(new LogLine(DateTime.Now.ToString("HH:mm:ss"), message, level));
+        while (LogLines.Count > MaxLogLines)
+            LogLines.RemoveAt(0);
+    }
+}

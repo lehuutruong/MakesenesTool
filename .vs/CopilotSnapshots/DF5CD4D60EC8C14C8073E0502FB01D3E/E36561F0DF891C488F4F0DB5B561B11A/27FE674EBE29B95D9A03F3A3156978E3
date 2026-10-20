@@ -1,0 +1,95 @@
+﻿<UserControl x:Class="MakesenesTool.Views.Step3View"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Step 3, Running and Results" FontSize="18" Foreground="{StaticResource TextBrush}"/>
+            <TextBlock Text="{Binding StatusLabel}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Progress -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,12"
+                    Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
+            <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}{0} / {1} rows">
+                        <Binding Path="CurrentRow"/>
+                        <Binding Path="TotalRows"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+            <ProgressBar Height="8" Margin="0,4,0,0" Maximum="100" Value="{Binding ProgressPercent, Mode=OneWay}">
+                <ProgressBar.Style>
+                    <Style TargetType="ProgressBar">
+                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                                <Setter Property="Foreground" Value="{StaticResource OkBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ProgressBar.Style>
+            </ProgressBar>
+        </StackPanel>
+
+        <!-- Log -->
+        <Border Grid.Row="2" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1"
+                CornerRadius="4" Padding="8" Margin="0,0,0,12">
+            <ListBox ItemsSource="{Binding LogLines}" BorderThickness="0" FontFamily="Consolas" MinHeight="180">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Timestamp}" Foreground="{StaticResource MutedBrush}" Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding Message}"
+                                       Foreground="{Binding Level, Converter={StaticResource LogLevelToBrush}}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Summary cards -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,12"
+                    Visibility="{Binding IsCompleted, Converter={StaticResource BoolToVis}}">
+            <Border Width="170" Padding="14" CornerRadius="6" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Total" Foreground="{StaticResource MutedBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Width="170" Padding="14" CornerRadius="6" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Text="{Binding PassedCount}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource OkBrush}"/>
+                    <TextBlock Text="{Binding PassedLabel}" Foreground="{StaticResource MutedBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Width="170" Padding="14" CornerRadius="6" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="{Binding FailedCount}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource ErrorBrush}"/>
+                    <TextBlock Text="{Binding FailedLabel}" Foreground="{StaticResource MutedBrush}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Notice banner -->
+        <Border Grid.Row="4" Padding="12" CornerRadius="6" Margin="0,0,0,12"
+                Background="{StaticResource WarningBackgroundBrush}"
+                Visibility="{Binding HasNotice, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding NoticeBanner.Message}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- Action -->
+        <Button Grid.Row="5" Content="Open report" Command="{Binding OpenReportCommand}"
+                IsEnabled="{Binding CanOpenReport}" HorizontalAlignment="Right"
+                Style="{StaticResource PrimaryButton}"/>
+    </Grid>
+</UserControl>

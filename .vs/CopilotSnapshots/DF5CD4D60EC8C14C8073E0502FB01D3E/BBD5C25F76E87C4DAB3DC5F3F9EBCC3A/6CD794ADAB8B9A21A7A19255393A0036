@@ -1,0 +1,34 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
+using System.IO;
+
+namespace MakesenesTool.ViewModels;
+
+/// <summary>Step 2: Running Settings (report path and run mode).</summary>
+public partial class Step2ViewModel : ObservableObject
+{
+    /// <summary>Shared wizard values.</summary>
+    public WizardState State { get; }
+
+    /// <param name="state">Shared wizard values.</param>
+    public Step2ViewModel(WizardState state)
+    {
+        State = state;
+    }
+
+    [RelayCommand]
+    private void BrowseReport()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Excel files (*.xlsx)|*.xlsx",
+            FileName = Path.GetFileName(State.ReportOutputPath),
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+
+        State.ReportOutputPath = dialog.FileName;
+        State.ReportPathOverridden = true;
+    }
+}

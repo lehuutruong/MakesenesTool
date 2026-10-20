@@ -1,0 +1,37 @@
+<UserControl x:Class="MakesenesTool.Views.Step2View"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Step 2, Running Settings" FontSize="18" Foreground="{StaticResource TextBrush}" Margin="0,0,0,16"/>
+
+        <TextBlock Text="Report output path" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Text="{Binding State.ReportOutputPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Padding="6,4"/>
+            <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseReportCommand}" Margin="8,0,0,0" Padding="14,5"/>
+        </Grid>
+        <TextBlock Text="Auto-filled from source folder name. You can change this to a different location."
+                   FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,24"/>
+
+        <TextBlock Text="Action" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4"/>
+        <StackPanel Orientation="Horizontal">
+            <ToggleButton Style="{StaticResource ActionCardButton}" Width="340"
+                          IsChecked="{Binding State.SelectedMode, Converter={StaticResource EnumMatch}, ConverterParameter=ValidateOnly, Mode=TwoWay}">
+                <StackPanel>
+                    <TextBlock Text="Validation" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Check every row and mark failed rows." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource ActionCardButton}" Width="340" Margin="12,0,0,0"
+                          IsChecked="{Binding State.SelectedMode, Converter={StaticResource EnumMatch}, ConverterParameter=ValidateAndImport, Mode=TwoWay}">
+                <StackPanel>
+                    <TextBlock Text="Calculate" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="Run calculations across the data and mark failures." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </ToggleButton>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

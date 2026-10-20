@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MigrationCommon/MigrationCommon.csproj" />
+  <Project Path="MakesenesTool/MakesenesTool.csproj" />
+</Solution>

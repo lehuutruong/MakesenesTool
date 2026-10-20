@@ -1,0 +1,40 @@
+﻿using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media;
+using MakesenesTool.Models;
+
+namespace MakesenesTool.Converters;
+
+/// <summary>Maps a StepState to a brush for the stepper parts (Circle, CircleBorder, CircleText, LabelBackground, LabelText).</summary>
+public class StepStateBrushConverter : IValueConverter
+{
+    /// <inheritdoc/>
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var state = value is StepState s ? s : StepState.Future;
+        var part = parameter?.ToString();
+
+        if (part == "LabelBackground" && state != StepState.Current)
+            return Brushes.Transparent;
+
+        var key = (part, state) switch
+        {
+            ("Circle", StepState.Future) => "CardBrush",
+            ("Circle", _) => "AccentBrush",
+            ("CircleBorder", StepState.Future) => "MutedBrush",
+            ("CircleBorder", _) => "AccentBrush",
+            ("CircleText", StepState.Future) => "MutedBrush",
+            ("CircleText", _) => "CardBrush",
+            ("LabelBackground", _) => "AccentBrush",
+            ("LabelText", StepState.Current) => "CardBrush",
+            ("LabelText", StepState.Future) => "MutedBrush",
+            _ => "TextBrush",
+        };
+        return Application.Current.FindResource(key);
+    }
+
+    /// <inheritdoc/>
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

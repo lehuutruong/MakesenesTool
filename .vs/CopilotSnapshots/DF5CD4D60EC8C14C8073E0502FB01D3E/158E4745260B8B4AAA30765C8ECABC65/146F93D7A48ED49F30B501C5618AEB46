@@ -1,0 +1,162 @@
+﻿using Microsoft.Data.Sqlite;
+using MakesenesTool.Models;
+using System.Globalization;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
+using System.Linq;
+
+namespace MakesenesTool.Abstractions;
+
+/// <summary>
+/// Base class that orchestrates Init / Validate / Calculate / UpdateStatus flows for a single location table.
+/// Subclasses should override ValidateAsync and CalculateAsync to implement domain logic.
+/// </summary>
+public abstract class DataProcessorBase
+{
+    protected readonly string _dbPath;
+    protected readonly string _table;
+    protected readonly string _quotedTable;
+
+    protected List<LocationMeasurement> Rows { get; } = new();
+
+    protected DataProcessorBase(string dbPath, string tableName)
+    {
+        _dbPath = dbPath ?? throw new ArgumentNullException(nameof(dbPath));
+        _table = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        _quotedTable = $"\"{tableName}\"";
+    }
+
+    /// <summary>Initializes by loading rows from the table and ensuring processing columns exist.</summary>
+    public virtual async Task InitAsync()
+    {
+        await Task.Run(() =>
+        {
+            using var conn = new SqliteConnection($"Data Source={_dbPath}");
+            conn.Open();
+            EnsureStatusColumns(conn, _table);
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT Id, SheetName, Time, Month, Year, Value, SourceFile, Status, Message FROM \"{_table}\";";
+            using var reader = cmd.ExecuteReader();
+            Rows.Clear();
+            while (reader.Read())
+            {
+                var id = reader.GetInt64(0);
+                var sheet = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                var timeStr = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                DateTime.TryParse(timeStr, null, DateTimeStyles.RoundtripKind, out var time);
+                var month = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+                var year = reader.IsDBNull(4) ? 0 : reader.GetInt32(4);
+                var value = reader.IsDBNull(5) ? 0.0 : reader.GetDouble(5);
+                var source = reader.IsDBNull(6) ? string.Empty : reader.GetString(6);
+                var status = reader.FieldCount > 7 && !reader.IsDBNull(7) ? reader.GetString(7) : ProcessStatus.Pending;
+                var message = reader.FieldCount > 8 && !reader.IsDBNull(8) ? reader.GetString(8) : string.Empty;
+
+                Rows.Add(new LocationMeasurement
+                {
+                    Id = id,
+                    SheetName = sheet,
+                    Time = time,
+                    Month = month,
+                    Year = year,
+                    Value = value,
+                    SourceFile = source,
+                    Location = _table,
+                    Status = status,
+                    Message = message,
+                });
+            }
+
+            conn.Close();
+        });
+    }
+
+    /// <summary>Validate domain-specific rows. Default implementation processes rows one by one via ValidateRow.</summary>
+    public virtual Task ValidateAsync() => ProcessRowsAsync(true, null);
+
+    /// <summary>Perform calculations. Default implementation processes rows one by one via CalculateRow.</summary>
+    public virtual Task CalculateAsync() => ProcessRowsAsync(false, null);
+
+    /// <summary>Process rows one by one and call the per-row ValidateRow or CalculateRow. Calls onRowProcessed after each row when provided.</summary>
+    public virtual Task ProcessRowsAsync(bool validateOnly, Action? onRowProcessed)
+    {
+        return Task.Run(() =>
+        {
+            for (int i = 0; i < Rows.Count; i++)
+            {
+                var r = Rows[i];
+                if (validateOnly)
+                    ValidateRow(r);
+                else
+                    CalculateRow(r);
+
+                onRowProcessed?.Invoke();
+            }
+        });
+    }
+
+    /// <summary>Validate a single row. Subclasses should override to implement row-level validation.</summary>
+    protected virtual void ValidateRow(LocationMeasurement r)
+    {
+        // Default: mark as passed
+        r.Status = ProcessStatus.Passed;
+        r.Message = string.Empty;
+    }
+
+    /// <summary>Calculate a single row. Subclasses should override to implement row-level calculation.</summary>
+    protected virtual void CalculateRow(LocationMeasurement r)
+    {
+        // Default: no change
+        if (r.Status != ProcessStatus.Failed)
+            r.Status = ProcessStatus.Passed;
+    }
+
+    /// <summary>Persist Status and Message back to the DB for all rows.</summary>
+    public virtual async Task UpdateStatusAsync()
+    {
+        await Task.Run(() =>
+        {
+            using var conn = new SqliteConnection($"Data Source={_dbPath}");
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+            foreach (var r in Rows)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $@"UPDATE ""{_table}"" SET Status = $status, Message = $message WHERE Id = $id;";
+                cmd.Parameters.AddWithValue("$status", r.Status ?? string.Empty);
+                cmd.Parameters.AddWithValue("$message", r.Message ?? string.Empty);
+                cmd.Parameters.AddWithValue("$id", r.Id);
+                cmd.ExecuteNonQuery();
+            }
+            tx.Commit();
+            conn.Close();
+        });
+    }
+
+    /// <summary>Add Status and Message columns to table if they are missing.</summary>
+    private static void EnsureStatusColumns(SqliteConnection conn, string table)
+    {
+        using var check = conn.CreateCommand();
+        check.CommandText = $"PRAGMA table_info(\"{table}\");";
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+                existing.Add(reader.GetString(1));
+        }
+
+        if (!existing.Contains("Status"))
+        {
+            using var add = conn.CreateCommand();
+            add.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN Status TEXT;";
+            add.ExecuteNonQuery();
+        }
+        if (!existing.Contains("Message"))
+        {
+            using var add = conn.CreateCommand();
+            add.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN Message TEXT;";
+            add.ExecuteNonQuery();
+        }
+    }
+}

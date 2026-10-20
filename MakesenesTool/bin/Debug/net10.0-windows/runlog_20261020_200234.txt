@@ -1,0 +1,58 @@
+Run started at 2026-10-20T20:02:34.8675773+07:00
+[2026-10-20 20:02:34] [Info] Processing table Ai_Nghia (1/14)...
+[2026-10-20 20:02:35] [Ok] Finished Ai_Nghia: 6996 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Cam_Le (2/14)...
+[2026-10-20 20:02:35] [Ok] Finished Cam_Le: 6432 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Cau_Lau (3/14)...
+[2026-10-20 20:02:35] [Ok] Finished Cau_Lau: 8024 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Giao_Thuy (4/14)...
+[2026-10-20 20:02:35] [Ok] Finished Giao_Thuy: 6294 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Hien (5/14)...
+[2026-10-20 20:02:35] [Ok] Finished Hien: 6537 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Hiep_Duc (6/14)...
+[2026-10-20 20:02:35] [Ok] Finished Hiep_Duc: 6557 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table Hoi_An (7/14)...
+[2026-10-20 20:02:35] [Ok] Finished Hoi_An: 6723 rows, 12418 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Ai_Nghia (8/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Ai_Nghia: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Cam_Le (9/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Cam_Le: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Cau_Lau (10/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Cau_Lau: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Giao_Thuy (11/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Giao_Thuy: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Hien (12/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Hien: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Hiep_Duc (13/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Hiep_Duc: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:35] [Info] Processing table TB_Hoi_An (14/14)...
+[2026-10-20 20:02:35] [Ok] Finished TB_Hoi_An: 34 rows, 34 success, 0 failed
+[2026-10-20 20:02:36] [Ok] Exported Ai_Nghia (12418 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Ai_Nghia (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Cam_Le (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Cau_Lau (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Giao_Thuy (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Hien (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Hiep_Duc (34 rows)
+[2026-10-20 20:02:36] [Ok] Exported Annual_Hoi_An (34 rows)
+[2026-10-20 20:02:37] [Ok] Exported Cam_Le (12418 rows)
+[2026-10-20 20:02:37] [Ok] Exported Cau_Lau (12418 rows)
+[2026-10-20 20:02:38] [Ok] Exported Giao_Thuy (12418 rows)
+[2026-10-20 20:02:38] [Ok] Exported Hien (12418 rows)
+[2026-10-20 20:02:39] [Ok] Exported Hiep_Duc (12418 rows)
+[2026-10-20 20:02:39] [Ok] Exported Hoi_An (12418 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Ai_Nghia (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Cam_Le (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Cau_Lau (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Giao_Thuy (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Hien (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Hiep_Duc (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported MK_Hoi_An (17 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Ai_Nghia (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Cam_Le (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Cau_Lau (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Giao_Thuy (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Hien (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Hiep_Duc (34 rows)
+[2026-10-20 20:02:39] [Ok] Exported TB_Hoi_An (34 rows)
+[2026-10-20 20:02:39] [Ok] Reports exported.

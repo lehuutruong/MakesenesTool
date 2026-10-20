@@ -1,0 +1,266 @@
+﻿using Microsoft.Data.Sqlite;
+using MakesenesTool.Models;
+using System.Globalization;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
+using System.Linq;
+using System.Collections.Concurrent;
+
+namespace MakesenesTool.Abstractions;
+
+/// <summary>
+/// Base class that orchestrates Init / Validate / Calculate / UpdateStatus flows for a single location table.
+/// Subclasses should override ValidateAsync and CalculateAsync to implement domain logic.
+/// </summary>
+public abstract class DataProcessorBase
+{
+    protected readonly string _dbPath;
+    protected readonly string _table;
+    protected readonly string _quotedTable;
+
+    protected List<LocationMeasurement> Rows { get; } = new();
+
+    protected DataProcessorBase(string dbPath, string tableName)
+    {
+        _dbPath = dbPath ?? throw new ArgumentNullException(nameof(dbPath));
+        _table = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        _quotedTable = $"\"{tableName}\"";
+    }
+
+    /// <summary>Return counts for rows in memory: total, passed, failed.</summary>
+    public (int total, int passed, int failed) GetCounts()
+    {
+        var total = Rows.Count;
+        var passed = Rows.Count(r => string.Equals(r.Status, ProcessStatus.Passed, StringComparison.OrdinalIgnoreCase));
+        var failed = Rows.Count(r => string.Equals(r.Status, ProcessStatus.Failed, StringComparison.OrdinalIgnoreCase));
+        return (total, passed, failed);
+    }
+
+    /// <summary>Initializes by loading rows from the table and ensuring processing columns exist.</summary>
+    public virtual async Task InitAsync()
+    {
+        await Task.Run(() =>
+        {
+            var cs = $"Data Source={_dbPath};Cache=Shared;Journal Mode=WAL;Synchronous=NORMAL;Timeout=5000";
+            using var conn = new SqliteConnection(cs);
+            conn.Open();
+
+            // Optimize for bulk reads
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA cache_size = 10000; PRAGMA query_only = TRUE;";
+                cmd.ExecuteNonQuery();
+            }
+
+            EnsureStatusColumns(conn, _table);
+
+            // Inspect table columns and build a safe select list
+            var available = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var info = conn.CreateCommand())
+            {
+                info.CommandText = $"PRAGMA table_info(\"{_table}\");";
+                using var r = info.ExecuteReader();
+                while (r.Read())
+                {
+                    available.Add(r.GetString(1));
+                }
+            }
+
+            var cols = new List<string> { "Id" };
+            // optional columns
+            foreach (var c in new[] { "SheetName", "Time", "Month", "Year", "Value", "SourceFile", "Status", "Message" })
+            {
+                if (available.Contains(c))
+                    cols.Add(c);
+            }
+
+            var selectList = string.Join(", ", cols.Select(c => "\"" + c + "\""));
+            using var cmd2 = conn.CreateCommand();
+            cmd2.CommandText = $"SELECT {selectList} FROM \"{_table}\";";
+            using var reader = cmd2.ExecuteReader();
+            Rows.Clear();
+            int rowCount = 0;
+            while (reader.Read())
+            {
+                var id = reader.GetInt64(reader.GetOrdinal("Id"));
+                string sheet = string.Empty;
+                if (available.Contains("SheetName") && !reader.IsDBNull(reader.GetOrdinal("SheetName")))
+                    sheet = reader.GetString(reader.GetOrdinal("SheetName"));
+
+                string timeStr = string.Empty;
+                if (available.Contains("Time") && !reader.IsDBNull(reader.GetOrdinal("Time")))
+                    timeStr = reader.GetString(reader.GetOrdinal("Time"));
+                DateTime.TryParse(timeStr, null, DateTimeStyles.RoundtripKind, out var time);
+
+                int month = 0;
+                if (available.Contains("Month") && !reader.IsDBNull(reader.GetOrdinal("Month")))
+                    month = reader.GetInt32(reader.GetOrdinal("Month"));
+
+                int year = 0;
+                if (available.Contains("Year") && !reader.IsDBNull(reader.GetOrdinal("Year")))
+                    year = reader.GetInt32(reader.GetOrdinal("Year"));
+
+                double value = 0.0;
+                if (available.Contains("Value") && !reader.IsDBNull(reader.GetOrdinal("Value")))
+                    value = reader.GetDouble(reader.GetOrdinal("Value"));
+
+                string source = string.Empty;
+                if (available.Contains("SourceFile") && !reader.IsDBNull(reader.GetOrdinal("SourceFile")))
+                    source = reader.GetString(reader.GetOrdinal("SourceFile"));
+
+                string status = ProcessStatus.Pending;
+                if (available.Contains("Status") && !reader.IsDBNull(reader.GetOrdinal("Status")))
+                    status = reader.GetString(reader.GetOrdinal("Status"));
+
+                string message = string.Empty;
+                if (available.Contains("Message") && !reader.IsDBNull(reader.GetOrdinal("Message")))
+                    message = reader.GetString(reader.GetOrdinal("Message"));
+
+                Rows.Add(new LocationMeasurement
+                {
+                    Id = id,
+                    SheetName = sheet,
+                    Time = time,
+                    Month = month,
+                    Year = year,
+                    Value = value,
+                    SourceFile = source,
+                    Location = _table,
+                    Status = status,
+                    Message = message,
+                });
+                rowCount++;
+            }
+
+            conn.Close();
+        });
+    }
+
+    /// <summary>Validate domain-specific rows. Default implementation processes rows one by one via ValidateRow.</summary>
+    public virtual Task ValidateAsync() => ProcessRowsAsync(true, null);
+
+    /// <summary>Perform calculations. Default implementation processes rows one by one via CalculateRow.</summary>
+    public virtual Task CalculateAsync() => ProcessRowsAsync(false, null);
+
+    /// <summary>Process rows one by one and call the per-row ValidateRow or CalculateRow. Calls onRowProcessed after each row when provided.</summary>
+    public virtual Task ProcessRowsAsync(bool validateOnly, Action? onRowProcessed)
+    {
+        return Task.Run(() =>
+        {
+            var po = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount) };
+            // Partition the index range to avoid concurrent list resizing issues and reduce overhead
+            var rangePartitioner = Partitioner.Create(0, Rows.Count);
+            Parallel.ForEach(rangePartitioner, po, (range, loopState) =>
+            {
+                for (int i = range.Item1; i < range.Item2; i++)
+                {
+                    var r = Rows[i];
+                    if (validateOnly)
+                        ValidateRow(r);
+                    else
+                        CalculateRow(r);
+
+                    onRowProcessed?.Invoke();
+                }
+            });
+        });
+    }
+
+    /// <summary>Validate a single row. Subclasses should override to implement row-level validation.</summary>
+    protected virtual void ValidateRow(LocationMeasurement r)
+    {
+        // Default: mark as passed
+        r.Status = ProcessStatus.Passed;
+        r.Message = string.Empty;
+    }
+
+    /// <summary>Calculate a single row. Subclasses should override to implement row-level calculation.</summary>
+    protected virtual void CalculateRow(LocationMeasurement r)
+    {
+        // Default: no change
+        if (r.Status != ProcessStatus.Failed)
+            r.Status = ProcessStatus.Passed;
+    }
+
+
+
+    /// <summary>Persist Status and Message back to the DB for all rows using bulk update.</summary>
+    public virtual async Task UpdateStatusAsync()
+    {
+        await Task.Run(() =>
+        {
+            var cs = $"Data Source={_dbPath};Cache=Shared;Journal Mode=WAL;Synchronous=NORMAL;BusyTimeout=5000";
+            using var conn = new SqliteConnection(cs);
+            conn.Open();
+
+            if (Rows.Count == 0)
+                return;
+
+            using var tx = conn.BeginTransaction();
+
+            // Create temporary table for bulk update
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"CREATE TEMPORARY TABLE _updates (id INTEGER PRIMARY KEY, status TEXT, message TEXT)";
+                cmd.ExecuteNonQuery();
+            }
+
+            // Batch insert updates into temp table
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"INSERT INTO _updates (id, status, message) VALUES ($id, $status, $message)";
+                var pId = cmd.CreateParameter(); pId.ParameterName = "$id"; cmd.Parameters.Add(pId);
+                var pStatus = cmd.CreateParameter(); pStatus.ParameterName = "$status"; cmd.Parameters.Add(pStatus);
+                var pMessage = cmd.CreateParameter(); pMessage.ParameterName = "$message"; cmd.Parameters.Add(pMessage);
+                cmd.Prepare();
+
+                foreach (var r in Rows)
+                {
+                    pId.Value = r.Id;
+                    pStatus.Value = r.Status ?? string.Empty;
+                    pMessage.Value = r.Message ?? string.Empty;
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+            // Bulk update using JOIN
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $@"UPDATE ""{_table}"" SET Status = (SELECT status FROM _updates WHERE id = ""{_table}"".Id), 
+                                     Message = (SELECT message FROM _updates WHERE id = ""{_table}"".Id) 
+                                     WHERE Id IN (SELECT id FROM _updates)";
+                cmd.ExecuteNonQuery();
+            }
+
+            tx.Commit();
+            conn.Close();
+        });
+    }
+
+    /// <summary>Add Status and Message columns to table if they are missing.</summary>
+    private static void EnsureStatusColumns(SqliteConnection conn, string table)
+    {
+        using var check = conn.CreateCommand();
+        check.CommandText = $"PRAGMA table_info(\"{table}\");";
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var reader = check.ExecuteReader())
+        {
+            while (reader.Read())
+                existing.Add(reader.GetString(1));
+        }
+
+        if (!existing.Contains("Status"))
+        {
+            using var add = conn.CreateCommand();
+            add.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN Status TEXT;";
+            add.ExecuteNonQuery();
+        }
+        if (!existing.Contains("Message"))
+        {
+            using var add = conn.CreateCommand();
+            add.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN Message TEXT;";
+            add.ExecuteNonQuery();
+        }
+    }
+}

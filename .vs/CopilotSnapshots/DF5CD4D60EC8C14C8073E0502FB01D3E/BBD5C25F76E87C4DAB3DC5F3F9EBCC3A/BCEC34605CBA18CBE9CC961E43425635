@@ -1,0 +1,27 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Windows.Forms;
+
+namespace MakesenesTool.ViewModels;
+
+/// <summary>Step 1: Source Data Selection.</summary>
+public partial class Step1ViewModel : ObservableObject
+{
+    /// <summary>Shared wizard values.</summary>
+    public WizardState State { get; }
+
+    /// <param name="state">Shared wizard values.</param>
+    public Step1ViewModel(WizardState state)
+    {
+        State = state;
+    }
+
+    [RelayCommand]
+    private void BrowseSource()
+    {
+        using var dialog = new FolderBrowserDialog();
+        var result = dialog.ShowDialog();
+        if (result == DialogResult.OK)
+            State.SourceFilePath = dialog.SelectedPath;
+    }
+}
