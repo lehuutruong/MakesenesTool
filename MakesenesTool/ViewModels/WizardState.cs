@@ -4,7 +4,6 @@ using System.IO;
 
 namespace MakesenesTool.ViewModels;
 
-/// <summary>Values entered across the wizard steps. One instance is shared by all step view models.</summary>
 public partial class WizardState : ObservableObject
 {
     private const string ReportSuffix = "_report";
@@ -21,29 +20,23 @@ public partial class WizardState : ObservableObject
     [ObservableProperty]
     private RunMode _selectedMode = RunMode.ValidateOnly;
 
-    /// <summary>Categories with a registered handler.</summary>
     public IReadOnlyList<string> Categories { get; } = ["Invoice", "CreditNote"];
 
-    /// <summary>True once the user picked a report path manually. Stops auto-fill.</summary>
     public bool ReportPathOverridden { get; set; }
 
-    /// <summary>Step 1 is complete when a source file is chosen.</summary>
     public bool Step1Complete => !string.IsNullOrWhiteSpace(SourceFilePath);
 
-    /// <summary>Step 2 is complete when a report path is set.</summary>
     public bool Step2Complete => !string.IsNullOrWhiteSpace(ReportOutputPath);
 
     partial void OnSourceFilePathChanged(string value)
     {
         if (!ReportPathOverridden && !string.IsNullOrWhiteSpace(value))
         {
-            // Default output folder is the same as the selected source folder (or source file's directory).
             var dir = Directory.Exists(value) ? value : Path.GetDirectoryName(value) ?? string.Empty;
             ReportOutputPath = dir;
         }
     }
 
-    /// <summary>Builds the run context from the entered values.</summary>
     public MigrationRunContext BuildRunContext() => new()
     {
         SourceFilePath = SourceFilePath,
@@ -51,7 +44,6 @@ public partial class WizardState : ObservableObject
         Mode = SelectedMode,
     };
 
-    /// <summary>Clears all values so the wizard can start again.</summary>
     public void Reset()
     {
         ReportPathOverridden = false;
@@ -63,7 +55,6 @@ public partial class WizardState : ObservableObject
 
     private static string BuildReportPath(string sourcePath)
     {
-        // Deprecated: BuildReportPath previously returned a default file path. Keep for compatibility by returning directory.
         return Directory.Exists(sourcePath) ? sourcePath : (Path.GetDirectoryName(sourcePath) ?? string.Empty);
     }
 }

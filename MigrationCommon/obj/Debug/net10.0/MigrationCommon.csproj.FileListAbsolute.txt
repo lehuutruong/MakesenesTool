@@ -13,3 +13,4 @@ C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\n
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.pdb
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\ref\MigrationCommon.dll
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\Migratio.E6F72FFE.Up2Date
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MigrationCommon\obj\Debug\net10.0\MigrationCommon.sourcelink.json

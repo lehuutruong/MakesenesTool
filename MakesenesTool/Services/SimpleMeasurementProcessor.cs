@@ -43,10 +43,6 @@ public class SimpleMeasurementProcessor : DataProcessorBase
         }
     }
 
-    /// <summary>
-    /// Per-row step of a calculation run. Runs in parallel over the rows, so it only touches the row itself.
-    /// A row that passes is used by the trend statistics in UpdateStatusAsync; a row that fails is left out.
-    /// </summary>
     protected override void CalculateRow(LocationMeasurement r)
     {
         if (double.IsNaN(r.Value) || double.IsInfinity(r.Value))
@@ -74,14 +70,8 @@ public class SimpleMeasurementProcessor : DataProcessorBase
             await Task.Run(ComputeTrendStatistics);
     }
 
-    /// <summary>
-    /// Builds the annual table from the rows that passed, runs MAKESENS on all 17 series,
-    /// and writes two tables: "Annual_&lt;location&gt;" (template "Annual data") and
-    /// "MK_&lt;location&gt;" (template "Trend Statistics"). Tables are recreated on every run.
-    /// </summary>
     private void ComputeTrendStatistics()
     {
-        // Rows without a real timestamp (e.g. the TB_ statistics tables) are not measurement series.
         var measurements = Rows
             .Where(r => r.Time != default && r.Status != ProcessStatus.Failed)
             .OrderBy(r => r.Id)

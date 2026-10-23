@@ -11,12 +11,10 @@ using MigrationCommon.Services;
 
 namespace MakesenesTool;
 
-/// <summary>Application entry point and DI composition root.</summary>
 public partial class App : System.Windows.Application
 {
     private ServiceProvider? _services;
 
-    /// <inheritdoc/>
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -36,7 +34,6 @@ public partial class App : System.Windows.Application
         window.Show();
     }
 
-    /// <inheritdoc/>
     protected override void OnExit(ExitEventArgs e)
     {
         _services?.Dispose();
@@ -45,7 +42,6 @@ public partial class App : System.Windows.Application
 
     private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // Desktop app with one active run at a time: the contexts live for the app lifetime.
         services.AddDbContext<MigrationDbContext>(
             o => o.UseSqlServer(configuration.GetConnectionString("PortalDb")),
             ServiceLifetime.Singleton, ServiceLifetime.Singleton);
@@ -57,10 +53,6 @@ public partial class App : System.Windows.Application
         services.AddTransient<ExcelReaderService>();
         services.AddTransient<BackupService>();
         services.AddTransient<IReportExportService, ReportExportService>();
-
-        //services.AddKeyedTransient<IMigrationHandler, InvoiceHandler>("Invoice");
-        //services.AddKeyedTransient<IMigrationHandler, CreditNoteHandler>("CreditNote");
-
         services.AddSingleton<WizardState>();
         services.AddTransient<Step1ViewModel>();
         services.AddTransient<Step2ViewModel>();

@@ -131,3 +131,4 @@ C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MakesenesTool\bin\Debug\net
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MakesenesTool\bin\Debug\net10.0-windows\runtimes\win-x86\native\sni.dll
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MakesenesTool\bin\Debug\net10.0-windows\runtimes\unix\lib\netstandard2.0\System.Data.SqlClient.dll
 C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MakesenesTool\bin\Debug\net10.0-windows\runtimes\win\lib\netstandard2.0\System.Data.SqlClient.dll
+C:\Users\ADMIN\Downloads\MakesenesTool\MakesenesTool\MakesenesTool\obj\Debug\net10.0-windows\MakesenesTool.sourcelink.json

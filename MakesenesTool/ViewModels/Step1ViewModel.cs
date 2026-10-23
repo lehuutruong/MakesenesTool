@@ -1,16 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-// Using System.Windows.Forms types via full qualification to avoid ambiguous references with WPF types.
 
 namespace MakesenesTool.ViewModels;
 
-/// <summary>Step 1: Source Data Selection.</summary>
 public partial class Step1ViewModel : ObservableObject
 {
-    /// <summary>Shared wizard values.</summary>
     public WizardState State { get; }
 
-    /// <param name="state">Shared wizard values.</param>
     public Step1ViewModel(WizardState state)
     {
         State = state;

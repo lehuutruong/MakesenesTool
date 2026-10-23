@@ -4,14 +4,10 @@ using System.IO;
 
 namespace MakesenesTool.Services;
 
-/// <summary>Reads the source workbook into raw supporting-document rows. Columns are mapped by header name.</summary>
 public class ExcelReaderService
 {
     private static readonly string[] RequiredHeaders = ["DocumentDate", "ReferenceNo", "Amount", "DocumentType"];
 
-    /// <summary>Reads all data rows from the first worksheet. Row 1 is the header and is skipped.</summary>
-    /// <exception cref="FileNotFoundException">The source file does not exist.</exception>
-    /// <exception cref="InvalidOperationException">A required header column is missing.</exception>
     public Task<IReadOnlyList<SupportingDocumentRow>> ReadAsync(string path, CancellationToken ct = default)
     {
         if (!File.Exists(path))

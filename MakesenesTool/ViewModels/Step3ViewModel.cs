@@ -20,20 +20,10 @@ using OfficeOpenXml.Style;
 
 namespace MakesenesTool.ViewModels;
 
-/// <summary>
-/// Step 3: Running and Results. Runs the migration/calculation job and shows progress, log and summary.
-/// Calculation reports are exported as one Excel workbook per location. Each workbook contains
-/// Annual, Trend Statistics, and one worksheet per month. Each monthly worksheet places its chart
-/// at the top-left, with the chart's plotted values and trend parameters to the right.
-/// </summary>
 public partial class Step3ViewModel : ObservableObject
 {
     private const int MaxLogLines = 500;
 
-    // Chart is anchored at A1. Put MAKESENS parameters immediately to its right (O:P),
-    // and the chart's source series after one spacer column (R:X). Monthly sheets deliberately do not
-    // freeze panes: freezing both rows and columns split the worksheet and made the floating
-    // chart appear split while scrolling or dragging it in Excel.
     private const int TrendParametersStartColumn = 15; // O
     private const int ChartDataStartColumn = 18; // R
 
@@ -82,32 +72,23 @@ public partial class Step3ViewModel : ObservableObject
     [ObservableProperty]
     private int _failedCount;
 
-    /// <summary>Log lines, capped at 500.</summary>
     public ObservableCollection<LogLine> LogLines { get; } = [];
 
-    /// <summary>Progress in percent of total rows.</summary>
     public double ProgressPercent => TotalRows == 0 ? 0 : CurrentRow * 100.0 / TotalRows;
 
-    /// <summary>True when a report path is available.</summary>
     public bool CanOpenReport => ReportReady;
 
-    /// <summary>True when the warning banner is visible.</summary>
     public bool HasNotice => NoticeBanner is not null;
 
-    /// <summary>Label of the passed card.</summary>
     public string PassedLabel => Mode == RunMode.ValidateOnly ? "Successful" : "Imported";
 
-    /// <summary>Label of the failed card.</summary>
     public string FailedLabel => Mode == RunMode.ValidateOnly ? "Failed" : "Skipped";
 
-    /// <param name="reportExporter">Writes the row-error report.</param>
     public Step3ViewModel(IReportExportService reportExporter)
     {
         _reportExporter = reportExporter;
     }
 
-    // Contains the values needed to draw the six chart series and display the related MAKESENS
-    // parameters beside the chart.
     private sealed record TrendLine(
         int? FirstYear,
         int? LastYear,
@@ -126,11 +107,6 @@ public partial class Step3ViewModel : ObservableObject
         double? Bmin95,
         double? Bmax95);
 
-    /// <summary>
-    /// Exports one workbook per location. Each workbook has Annual, Trend Statistics, and 12 monthly
-    /// worksheets. Each monthly worksheet has a single chart containing actual monthly data points,
-    /// Sen's estimate, and the four 99%/95% confidence limits.
-    /// </summary>
     private async Task ExportReportsFromDbAsync(string dbPath, string outputFolder)
     {
         await Task.Run(() =>
@@ -180,11 +156,9 @@ public partial class Step3ViewModel : ObservableObject
 
                     using var package = new ExcelPackage();
 
-                    // Sheet 1: Annual.
                     var annualWs = package.Workbook.Worksheets.Add("Annual");
                     CopySqliteTableToWorksheet(conn, annualTableName, annualWs);
 
-                    // Sheet 2: Trend Statistics.
                     var trendWs = package.Workbook.Worksheets.Add("Trend Statistics");
                     if (hasTrendTable)
                     {
@@ -201,7 +175,6 @@ public partial class Step3ViewModel : ObservableObject
                         ? ReadTrendResults(conn, trendTableName)
                         : new Dictionary<string, TrendLine>(StringComparer.OrdinalIgnoreCase);
 
-                    // Sheets 3-14: one monthly sheet and one chart per month.
                     for (int month = 1; month <= 12; month++)
                     {
                         var monthName = CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(month);
@@ -244,7 +217,6 @@ public partial class Step3ViewModel : ObservableObject
     {
         var annualColumn = FindMonthColumn(annualWs, month);
 
-        // Keep the MAKESENS statistics next to the chart, and put chart source values farther right.
         WriteMonthlyDataHeaders(ws, ChartDataStartColumn);
 
         string seriesName = annualColumn == 0
@@ -273,9 +245,6 @@ public partial class Step3ViewModel : ObservableObject
             return;
         }
 
-        // The first valid year is used as the zero point for Q * t + B. This matches the common
-        // MAKESENS convention where t is the index from the first year. If MakesensCalculator uses
-        // actual calendar years in B, change the expression below to q * year + b.
         int? firstAvailableYear = null;
         for (int sourceRow = 2; sourceRow <= lastAnnualRow; sourceRow++)
         {
@@ -336,17 +305,13 @@ public partial class Step3ViewModel : ObservableObject
 
         FormatMonthlyWorksheet(ws, lastDataRow);
 
-        // One XY scatter chart: actual observations are markers; Sen and confidence limits are lines.
-        // The width is kept inside the space before column O, where the parameter table begins.
         var chart = (ExcelScatterChart)ws.Drawings.AddChart(
             $"MonthlyChart{month:00}",
             eChartType.XYScatterLines);
 
         chart.Title.Text = $"{location} - {monthName} ({seriesName})";
         chart.Style = eChartStyle.Style13;
-        //chart.RoundedCorners = false;
         chart.DisplayBlanksAs = eDisplayBlanksAs.Gap;
-        // Keep chart dimensions stable when worksheet columns/rows are resized in Excel.
         chart.EditAs = OfficeOpenXml.Drawing.eEditAs.OneCell;
         chart.SetPosition(0, 0, 0, 0);
         chart.SetSize(850, 430);
@@ -472,8 +437,6 @@ public partial class Step3ViewModel : ObservableObject
         ws.Column(dataStart + 6).Width = 16;
         ws.Column(parametersStart).Width = 22;
         ws.Column(parametersStart + 1).Width = 18;
-        // Do not freeze monthly sheets: freezing at column U created a vertical split pane
-        // across the chart area and made the chart awkward to view and move in Excel.
         ws.View.ShowGridLines = false;
 
         if (lastDataRow >= 2)
@@ -521,7 +484,6 @@ public partial class Step3ViewModel : ObservableObject
         series.Header = title;
         series.Marker = eMarkerStyle.None;
 
-        // Use a high-contrast palette so the estimate and confidence limits remain distinguishable.
         series.LineColor = title switch
         {
             "Sen's estimate" => Color.FromArgb(192, 0, 0),       // red, central estimate
@@ -548,8 +510,6 @@ public partial class Step3ViewModel : ObservableObject
         bool orderTrendStatistics = false)
     {
         using var cmd = conn.CreateCommand();
-        // Annual must remain sorted by year. Trend Statistics uses the requested seasonal order,
-        // not alphabetical order.
         cmd.CommandText = orderTrendStatistics
             ? $"SELECT * FROM {QuoteIdentifier(tableName)};"
             : $"SELECT * FROM {QuoteIdentifier(tableName)} ORDER BY 1;";
@@ -563,8 +523,6 @@ public partial class Step3ViewModel : ObservableObject
         int row = 2;
         if (orderTrendStatistics)
         {
-            // Read the records first so they can be sorted by the explicitly requested order.
-            // Retain each row's original position as a stable fallback for unrecognized series.
             var records = new List<(object?[] Values, int OriginalIndex)>();
             int originalIndex = 0;
 
@@ -801,10 +759,6 @@ public partial class Step3ViewModel : ObservableObject
         return string.IsNullOrWhiteSpace(safe) ? "Location" : safe;
     }
 
-    /// <summary>
-    /// Runs processors found in the provided SQLite database. If validateOnly is true, validates;
-    /// otherwise calculates row statuses and MAKESENS statistics.
-    /// </summary>
     public async Task RunProcessorsAsync(string dbPath, bool validateOnly, string outputFolder)
     {
         BeginRun(Mode);
@@ -963,7 +917,6 @@ public partial class Step3ViewModel : ObservableObject
         }
     }
 
-    /// <summary>Runs the file-based migration handler. Failures are logged so the view stays usable.</summary>
     public async Task RunAsync(IMigrationHandler handler, MigrationRunContext context)
     {
         BeginRun(context.Mode);
@@ -1162,7 +1115,6 @@ public partial class Step3ViewModel : ObservableObject
         }
         catch
         {
-            // Ignore log-file write errors so logging cannot stop the run.
         }
     }
 }

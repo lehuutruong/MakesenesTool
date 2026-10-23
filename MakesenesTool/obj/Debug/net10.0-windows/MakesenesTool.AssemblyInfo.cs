@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MakesenesTool")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+957cbc07b3b73268c498abc5f1d0e253e8d3abed")]
 [assembly: System.Reflection.AssemblyProductAttribute("MakesenesTool")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MakesenesTool")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

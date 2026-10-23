@@ -3,13 +3,11 @@ using MigrationCommon.Models;
 
 namespace MigrationCommon.Services;
 
-/// <summary>Exports RowError lists to an .xlsx file using ClosedXML.</summary>
 public class ReportExportService : IReportExportService
 {
     private const string SheetName = "Validation errors";
     private static readonly string[] Headers = ["Row number", "Field", "Error message", "Source value"];
 
-    /// <inheritdoc/>
     public Task ExportAsync(IEnumerable<RowError> errors, string outputPath)
     {
         var snapshot = errors.ToList();
